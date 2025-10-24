@@ -1,0 +1,11 @@
+# Common ignores
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+*.tmp
+.env
+.vscode/
+
+# Ignore Git metadata in case of nested repos
+*/.git
