@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古文字书写</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 0.5rem;
+            max-width: 100%;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.625rem rgba(0, 0, 0, 0.1);
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-container {
+            margin-bottom: 0.75rem;
+        }
+        
+        .character-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 0.25rem;
+            font-size: 1rem;
+        }
+        
+        .control-row {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        button {
+            padding: 0.5rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+            flex: 1;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .script-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            width: 100%;
+        }
+        
+        .canvas-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0.75rem 0;
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 20rem;
+            height: 20rem;
+            margin: 0 auto;
+        }
+        
+        .canvas-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #character-canvas {
+            border: 1px solid #ddd;
+            background-color: #fffef7;
+        }
+        
+        #drawing-canvas {
+            border: 1px solid #ddd;
+            background-color: transparent;
+            touch-action: none;
+        }
+        
+        .feedback {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background-color: #f8f9fa;
+            border-radius: 0.25rem;
+            border-left: 0.25rem solid #3498db;
+            display: none;
+        }
+        
+        .character-info {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background-color: #e8f4fc;
+            border-radius: 0.25rem;
+            max-height: 8rem;
+            overflow-y: auto;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            color: #666;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+            }
+            
+            .control-row {
+                flex-wrap: wrap;
+            }
+            
+            .checkbox-group {
+                margin-right: 0;
+            }
+            
+            .script-selector {
+                width: 100%;
+            }
+            
+            .canvas-container {
+                max-width: 16rem;
+                height: 16rem;
+            }
+            
+            button {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+        }
+        
+        /* 古文字字体定义 */
+        @font-face {
+            font-family: 'XiaoZhuan';
+            src: url('../../font/xiaozhuan.woff2') format('woff2');
+            font-display: block;
+        }
+        
+        @font-face {
+            font-family: 'DaZhuan';
+            src: url('../../font/dazhuan.woff2') format('woff2');
+            font-display: block;
+        }
+        
+        @font-face {
+            font-family: 'JiaGuWen';
+            src: url('../../font/jiaguwen.woff2') format('woff2');
+            font-display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-container">
+            <input type="text" id="character-input" class="character-input" placeholder="请输入一个汉字" maxlength="1">
+        </div>
+        
+        <div class="control-row">
+            <div class="checkbox-group">
+                <input type="checkbox" id="variant-checkbox" checked>
+                <label for="variant-checkbox">异体</label>
+            </div>
+            
+            <div class="script-selector">
+                <select id="script-select">
+                    <option value="xiaozhuan" selected>小篆</option>
+                    <option value="dazhuan">金文</option>
+                    <option value="jiaguwen">甲骨</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button id="search-btn">查找</button>
+            <button id="draw-btn">书写</button>
+            <button id="clear-btn">清除</button>
+        </div>
+        
+        <div class="canvas-wrapper">
+            <div class="canvas-container">
+                <canvas id="character-canvas" class="canvas-layer"></canvas>
+                <canvas id="drawing-canvas" class="canvas-layer"></canvas>
+            </div>
+        </div>
+        
+        <div id="feedback" class="feedback">
+            <h3>书写评价</h3>
+            <p id="feedback-text"></p>
+        </div>
+        
+        <div id="character-info" class="character-info">
+            
+            <p id="info-text">加载中...</p>
+        </div>
+    </div>
+    
+    <div class="footer">
+        广东外语外贸大学 魏慧斌
+    </div>
+    
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <p id="modal-text"></p>
+            <button id="modal-close">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const characterInput = document.getElementById('character-input');
+        const searchBtn = document.getElementById('search-btn');
+        const variantCheckbox = document.getElementById('variant-checkbox');
+        const scriptSelect = document.getElementById('script-select');
+        const charCanvas = document.getElementById('character-canvas');
+        const drawingCanvas = document.getElementById('drawing-canvas');
+        const drawBtn = document.getElementById('draw-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const feedback = document.getElementById('feedback');
+        const feedbackText = document.getElementById('feedback-text');
+        const characterInfo = document.getElementById('character-info');
+        const infoText = document.getElementById('info-text');
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modal-text');
+        const modalClose = document.getElementById('modal-close');
+
+        // 画布上下文
+        const charCtx = charCanvas.getContext('2d');
+        const drawCtx = drawingCanvas.getContext('2d');
+
+        // 当前状态
+        let currentChar = '篆';
+        let isDrawing = false;
+        let drawingPoints = [];
+        let swData = {
+            "篆": {
+                "序号": "1",
+                "异体": "",
+                "拼音": "zhuan4",
+                "部首": "竹",
+                "反切": "直恋",
+                "上字": "直",
+                "下字": "恋",
+                "又音": "",
+                "意符": "",
+                "声符": "",
+                "引书": "",
+                "引书内容": "",
+                "古文": "",
+                "籀文": "",
+                "篆文": "篆",
+                "新附": "",
+                "大徐本": "篆，引书也。从竹，彖声。",
+                "段注": "篆，引书也。谓引笔而箸之于竹帛也。"
+            }
+        };
+        let yitiData = {
+            "篆": "7B52,篆; 7B51,籒;"
+        };
+
+        // 显示模态框
+        function showModal(message) {
+            console.log('显示模态框:', message);
+            modalText.textContent = message;
+            modal.style.display = 'flex';
+        }
+
+        // 获取当前选择的字体
+        function getCurrentFontFamily() {
+            const selectedScript = scriptSelect.value;
+            switch(selectedScript) {
+                case 'dazhuan':
+                    return 'DaZhuan';
+                case 'jiaguwen':
+                    return 'JiaGuWen';
+                case 'xiaozhuan':
+                default:
+                    return 'XiaoZhuan';
+            }
+        }
+
+        // 初始化
+        async function init() {
+            console.log('开始初始化应用');
+            // 设置画布大小（适应高DPI屏幕）
+            setupCanvas(charCanvas);
+            setupCanvas(drawingCanvas);
+            console.log('画布初始化完成');
+            
+            // 默认勾选异体复选框
+            variantCheckbox.checked = true;
+            
+            // 加载数据
+            try {
+                console.log('开始加载数据...');
+                const [swResponse, yitiResponse] = await Promise.all([
+                    fetch('sw.json').catch(e => {
+                        console.warn('sw.json加载失败，使用默认数据', e);
+                        return new Response(JSON.stringify(swData));
+                    }),
+                    fetch('yiti.json').catch(e => {
+                        console.warn('yiti.json加载失败，使用默认数据', e);
+                        return new Response(JSON.stringify(yitiData));
+                    })
+                ]);
+                
+                if (!swResponse.ok || !yitiResponse.ok) {
+                    throw new Error('数据加载失败');
+                }
+                
+                swData = await swResponse.json();
+                yitiData = await yitiResponse.json();
+                console.log('数据加载完成', {swData, yitiData});
+                
+                // 默认显示"篆"字
+                if (swData[currentChar]) {
+                    console.log('显示默认字符:', currentChar);
+                    displayCharacter(currentChar);
+                    displayCharacterInfo(swData[currentChar]);
+                } else {
+                    console.warn('默认字符数据加载失败');
+                    infoText.textContent = '默认字符数据加载失败';
+                }
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showModal('数据加载失败: ' + error.message);
+            }
+            
+            // 事件监听
+            searchBtn.addEventListener('click', handleSearch);
+            drawBtn.addEventListener('click', toggleDrawing);
+            clearBtn.addEventListener('click', clearDrawing);
+            modalClose.addEventListener('click', () => {
+                modal.style.display = 'none';
+                console.log('关闭模态框');
+            });
+            scriptSelect.addEventListener('change', () => {
+                if (currentChar) {
+                    displayCharacter(currentChar);
+                }
+            });
+            
+            // 输入框事件
+            characterInput.addEventListener('focus', () => {
+                if (characterInput.value === '') {
+                    characterInput.placeholder = '';
+                }
+            });
+            
+            characterInput.addEventListener('blur', () => {
+                if (characterInput.value === '') {
+                    characterInput.placeholder = '请输入一个汉字';
+                }
+            });
+            
+            characterInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    console.log('按回车键触发搜索');
+                    handleSearch();
+                }
+            });
+            
+            // 触摸和鼠标事件
+            drawingCanvas.addEventListener('mousedown', startDrawing);
+            drawingCanvas.addEventListener('mousemove', draw);
+            drawingCanvas.addEventListener('mouseup', endDrawing);
+            drawingCanvas.addEventListener('mouseout', endDrawing);
+            
+            drawingCanvas.addEventListener('touchstart', handleTouchStart);
+            drawingCanvas.addEventListener('touchmove', handleTouchMove);
+            drawingCanvas.addEventListener('touchend', handleTouchEnd);
+
+            console.log('应用初始化完成');
+        }
+
+        // 设置画布大小（适应高DPI屏幕）
+        function setupCanvas(canvas) {
+            console.log('设置画布大小:', canvas.id);
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            console.log('画布设置完成:', {width: canvas.width, height: canvas.height, dpr});
+        }
+
+        // 处理搜索
+        function handleSearch() {
+            const inputChar = characterInput.value.trim();
+            console.log('处理搜索:', inputChar);
+            if (!inputChar) {
+                showModal('请输入要查询的汉字');
+                return;
+            }
+            
+            // 查找字符
+            let charData = swData[inputChar];
+            let charToDisplay = inputChar;
+            console.log('查找字符:', {inputChar, charData});
+            
+            // 如果找不到且允许使用异体字
+            if (!charData && variantCheckbox.checked) {
+                console.log('尝试查找异体字');
+                const variants = getVariant(inputChar);
+                console.log('找到异体字:', variants);
+                if (variants && variants.length > 0) {
+                    // 查找第一个在swData中存在的异体字
+                    for (const variant of variants) {
+                        if (swData[variant.char]) {
+                            charToDisplay = variant.char;
+                            charData = swData[variant.char];
+                            console.log('使用异体字:', variant.char);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (charData) {
+                currentChar = charToDisplay;
+                console.log('显示字符:', charToDisplay);
+                displayCharacter(charToDisplay);
+                displayCharacterInfo(charData);
+                clearDrawing();
+                feedback.style.display = 'none';
+                drawBtn.textContent = '书写';
+                drawBtn.disabled = false;
+            } else {
+                console.log('未找到字符:', inputChar);
+                showModal('未找到该字的信息');
+            }
+        }
+
+        // 获取异体字
+        function getVariant(char) {
+            console.log('获取异体字:', char);
+            // 首先尝试直接查找
+            const variantStr = yitiData[char];
+            if (variantStr) {
+                console.log('直接找到异体字:', variantStr);
+                return parseVariantStr(variantStr);
+            }
+            
+            // 如果没有找到，尝试查找以该字符为异体的正体字
+            for (const [key, value] of Object.entries(yitiData)) {
+                const variants = parseVariantStr(value);
+                const found = variants.find(v => v.char === char);
+                if (found) {
+                    console.log('找到包含该字符的正体字:', key);
+                    // 返回正体字及其所有异体字
+                    return [{char: key, code: key.charCodeAt(0).toString(16).toUpperCase()}, ...variants];
+                }
+            }
+            
+            console.log('未找到异体字');
+            return null;
+        }
+
+        // 解析异体字字符串
+        function parseVariantStr(variantStr) {
+            console.log('解析异体字字符串:', variantStr);
+            const variants = [];
+            const parts = variantStr.split(';').filter(p => p.trim());
+            
+            for (const part of parts) {
+                const [code, char] = part.trim().split(',');
+                if (code && char) {
+                    variants.push({ code, char });
+                }
+            }
+            
+            console.log('解析结果:', variants);
+            return variants;
+        }
+
+        // 显示字符
+        function displayCharacter(char) {
+            console.log('显示字符:', char);
+            const canvasWidth = charCanvas.width / (window.devicePixelRatio || 1);
+            const canvasHeight = charCanvas.height / (window.devicePixelRatio || 1);
+            
+            charCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            const fontFamily = getCurrentFontFamily();
+            charCtx.font = `${canvasHeight * 0.8}px ${fontFamily}, 'Microsoft YaHei'`;
+            charCtx.textAlign = 'center';
+            charCtx.textBaseline = 'middle';
+            charCtx.fillStyle = 'rgba(255, 0, 0, 0.3)'; // 红色半透明
+            charCtx.fillText(char, canvasWidth / 2, canvasHeight / 2);
+        }
+
+        // 显示字符信息
+        function displayCharacterInfo(data) {
+            console.log('显示字符信息:', data);
+            characterInfo.style.display = 'block';
+            
+            let infoHtml = `
+                <p><strong>拼音：</strong>${data.拼音 || '无'}</p>
+            `;
+            
+            if (data.大徐本) {
+                infoHtml += `<p><strong>大徐本：</strong>${data.大徐本}</p>`;
+            }
+            
+            infoText.innerHTML = infoHtml;
+        }
+
+        // 切换绘图模式
+        function toggleDrawing() {
+            console.log('切换绘图模式:', drawBtn.textContent);
+            if (drawBtn.textContent === '书写') {
+                drawBtn.textContent = '写完';
+                drawingCanvas.style.cursor = 'crosshair';
+            } else {
+                drawBtn.textContent = '书写';
+                drawingCanvas.style.cursor = 'default';
+                evaluateDrawing();
+            }
+        }
+
+        // 开始绘图
+        function startDrawing(e) {
+            if (drawBtn.textContent !== '写完') return;
+            
+            console.log('开始绘图');
+            isDrawing = true;
+            drawingPoints = [];
+            drawCtx.lineWidth = 5; // 加粗笔迹
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.strokeStyle = '#000000'; // 黑色笔迹
+            
+            const pos = getPosition(e);
+            console.log('起始位置:', pos);
+            drawCtx.beginPath();
+            drawCtx.moveTo(pos.x, pos.y);
+            drawingPoints.push({ x: pos.x, y: pos.y, time: Date.now() });
+        }
+
+        // 绘图过程
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const pos = getPosition(e);
+            console.log('绘图位置:', pos);
+            drawCtx.lineTo(pos.x, pos.y);
+            drawCtx.stroke();
+            drawingPoints.push({ x: pos.x, y: pos.y, time: Date.now() });
+        }
+
+        // 结束绘图
+        function endDrawing() {
+            if (isDrawing) {
+                console.log('结束绘图');
+                isDrawing = false;
+                drawCtx.closePath();
+            }
+        }
+
+        // 处理触摸开始
+        function handleTouchStart(e) {
+            console.log('触摸开始');
+            e.preventDefault();
+            if (drawBtn.textContent !== '写完') return;
+            
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            startDrawing(mouseEvent);
+        }
+
+        // 处理触摸移动
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            draw(mouseEvent);
+        }
+
+        // 处理触摸结束
+        function handleTouchEnd(e) {
+            console.log('触摸结束');
+            e.preventDefault();
+            endDrawing();
+        }
+
+        // 获取位置
+        function getPosition(e) {
+            const rect = drawingCanvas.getBoundingClientRect();
+            const scaleX = drawingCanvas.width / rect.width;
+            const scaleY = drawingCanvas.height / rect.height;
+            
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            return {
+                x: (clientX - rect.left) * scaleX / (window.devicePixelRatio || 1),
+                y: (clientY - rect.top) * scaleY / (window.devicePixelRatio || 1)
+            };
+        }
+
+        // 清除绘图
+        function clearDrawing() {
+            console.log('清除绘图');
+            const canvasWidth = drawingCanvas.width / (window.devicePixelRatio || 1);
+            const canvasHeight = drawingCanvas.height / (window.devicePixelRatio || 1);
+            
+            drawCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            drawingPoints = [];
+            feedback.style.display = 'none';
+        }
+
+        // 评估绘图
+        function evaluateDrawing() {
+            console.log('评估绘图');
+            if (drawingPoints.length === 0) {
+                showModal('请先书写后再点击"写完"按钮');
+                return;
+            }
+            
+            // 这里应该有更复杂的评估算法
+            // 目前只是一个简单的鼓励性反馈
+            
+            const score = Math.min(90 + Math.floor(Math.random() * 10), 100);
+            let comment = '';
+            
+            if (score >= 95) {
+                comment = '太棒了！你的书写非常接近古文字风格！';
+            } else if (score >= 85) {
+                comment = '写得很好！再多练习几次会更好！';
+            } else if (score >= 75) {
+                comment = '不错！注意观察字形的细节部分。';
+            } else {
+                comment = '继续加油！多观察原字再试一次吧！';
+            }
+            
+            feedbackText.textContent = `评分：${score}分。${comment}`;
+            feedback.style.display = 'block';
+        }
+
+        // 窗口大小改变时调整画布
+        window.addEventListener('resize', () => {
+            console.log('窗口大小改变，调整画布');
+            setupCanvas(charCanvas);
+            setupCanvas(drawingCanvas);
+            if (currentChar) {
+                displayCharacter(currentChar);
+            }
+        });
+
+        // 初始化应用
+        console.log('准备初始化应用');
+        init();
+    </script>
+</body>
+</html>
